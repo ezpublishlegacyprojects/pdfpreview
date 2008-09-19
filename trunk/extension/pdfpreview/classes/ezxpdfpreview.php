@@ -43,12 +43,13 @@ class ezxpdfpreview
     */
     function modify( &$tpl, &$operatorName, &$operatorParameters, &$rootNamespace, &$currentNamespace, &$operatorValue, &$namedParameters )
     {
-        if ( !file_exists( $operatorValue ) or !is_readable( $operatorValue ) )
+    	$pdffile = eZClusterFileHandler::instance( $operatorValue );
+        if ( !$pdffile->exists() )
         {
             eZDebug::writeError( "File not readable or doesn't exist", "pdfpreview");
             return;
-        }    
-        include_once( 'lib/ezutils/classes/ezmimetype.php' );
+        }
+        
         if ( $namedParameters['original_filename'] )
         {
             $mime = eZMimeType::findByURL( $namedParameters['original_filename'] );
@@ -77,12 +78,22 @@ class ezxpdfpreview
         $target = "$dirPath/$filename";
         if ( !file_exists( $target ) )
         {
-        
-            $cmd =  "convert " . eZSys::escapeShellArgument( $source . "[" . $page . "]" ) . " " . "-resize " . eZSys::escapeShellArgument(  $width . "x" . $height . ">" ) . " " . eZSys::escapeShellArgument( $target );
-            $out = shell_exec( $cmd );
-            eZDebug::writeDebug( $cmd, "pdfpreview" );
-            if ( $out )
-                eZDebug::writeDebug( $out, "pdfpreview" );
+        	$fileHandler = eZClusterFileHandler::instance( $target );
+        	if ( $fileHandler->exists() )
+        	{
+        		$fileHandler->fetch(true);
+        	}
+        	else 
+        	{
+        		$pdffile->fetch(true);
+        		$cmd =  "convert " . eZSys::escapeShellArgument( $source . "[" . $page . "]" ) . " " . "-resize " . eZSys::escapeShellArgument(  $width . "x" . $height . ">" ) . " " . eZSys::escapeShellArgument( $target );
+            	$out = shell_exec( $cmd );
+            	$fileHandler = eZClusterFileHandler::instance();
+            	$fileHandler->fileStore( $target, 'pdfpreview-image', false );
+            	eZDebug::writeDebug( $cmd, "pdfpreview" );
+            	if ( $out )
+            		eZDebug::writeDebug( $out, "pdfpreview" );
+        	}
         }
         $operatorValue = $target;
     }
